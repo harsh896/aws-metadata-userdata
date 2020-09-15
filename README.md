@@ -3,7 +3,7 @@ mention region ap-southeast-2(sydney)/us-west-2(N.California) as the instance im
 You can choose your own region and you have to change the ImageId parameter vaule as mentioned 
 > Run: `aws configure --profile PROFILE_NAME`
 
-# In valiadte and run shell sctipt file
+# In validate and run shell script file
 This script will validate the template file and create/update the cloudformation stack through aws cli command. This script runs with an argument -m (create/update).
 
 1. Before running the script, change the following value:
