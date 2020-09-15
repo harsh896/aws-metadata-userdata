@@ -25,9 +25,11 @@ echo "Validating $template"
 if aws cloudformation validate-template --template-body file://$stack_path/$template --profile ${PROFILE} >> /dev/null
 then
     echo "---- $template is valid"
-    aws cloudformation ${METHOD}-stack --template-body file://$stack_path/$file_name \
-    --parameters file://$stack_path/parameters.json --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM --stack-name ${STACK_NAME} --profile ${PROFILE}
-    echo "Script Ended"
+    if aws cloudformation ${METHOD}-stack --template-body file://$stack_path/$file_name \
+    --parameters file://$stack_path/parameters.json --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM --stack-name ${STACK_NAME} --profile ${PROFILE} >> /dev/null
+    then
+        echo "Script Ended"
+    fi
 else
     echo "---- $template is invalid" 
 fi
