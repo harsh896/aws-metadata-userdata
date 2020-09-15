@@ -1,0 +1,160 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Creating EC2 instance with meta-data, INIT
+Parameters:
+  InstanceType:
+    AllowedValues:
+      - t1.micro
+      - t2.medium
+      - t2.micro
+      - t3.medium
+      - t3.micro
+    Description: Enter Allowed values. Default instance Type is t2.micro
+    Type: String
+    Default: t2.micro
+  EC2Name:
+    Description: Name of the Ec2 Instance
+    Type: String
+    Default: Ec2 Name
+  KeyName:
+    Description: Key Name of the Ec2 Instance
+    Type: AWS::EC2::KeyPair::KeyName
+    Default: keyname
+Mappings:
+  RegionMap:
+    ap-southeast-2:
+      AMI: ami-00826d10bbe80c195
+    us-west-1:
+      AMI: ami-023e0c35fc414e78b
+Resources:
+  SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub '${EC2Name} HTTP + HTTPS'
+      GroupDescription: HTTP & HTTPS from all
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: '0.0.0.0/0'
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: '0.0.0.0/0'
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: '0.0.0.0/0'
+  ElasticIp:
+    Type: AWS::EC2::EIP
+    Properties:
+      InstanceId: !Ref 'EC2Instance'
+      Tags:
+        - Key: Name
+          Value: !Sub '${EC2Name} Elastic Ip'
+  EC2Instance:
+    Type: AWS::EC2::Instance
+    Metadata:
+      AWS::CloudFormation::Init:
+        config:
+          packages:
+            yum:
+              httpd: []
+              git: []
+          files:
+            /var/www/html/index.html:
+              content: |
+                <html>
+                  <head>
+                    <title>AWS Linux</title>
+                    <link rel="stylesheet" type="text/css" href="style.css">
+                  </head>
+                  <body style="margin:0;padding: 0;">
+                    <div style="margin:0;padding: 0;">
+                      <div class="div" style="background-color:#581845;"><p id="p" style="color:#c39bd3;">#581845</p></div>
+                      <div class="div" style="background-color:#900c3f;"><p id="p" style="color:#d7bde2;">#900C3F</p></div>
+                      <div class="div" style="background-color:#c70039;"><p id="p" style="color:#d2b4de ;">#C70039</p></div>
+                      <div class="div" style="background-color:#ff5733;"><p id="p" style="color:#d4efdf;">#FF5733</p></div>
+                      <div class="div" style="background-color:#ffc300;"><p id="p" style="color:#dc7633;">#FFC300</p></div>
+                    </div>
+                  </body>
+                </html>
+              mode: '000644'
+              owner: root
+              group: root
+            /var/www/html/style.css:
+              content: |
+                .div {
+                  height: 100vh;
+                  width: 20%;
+                  float: left;
+                }
+                #p {
+                  position: relative;
+                  font-weight: bold;
+                  font-size: 24px;
+                  color: #d1f2eb;
+                  text-align: center;
+                  font-family: Tahoma, Geneva, sans-serif;
+                }
+              mode: '000644'
+              owner: root
+              group: root
+            /etc/cfn/cfn-hup.conf:
+              content: !Sub |
+                [main]
+                stack=${AWS::StackId}
+                region=${AWS::Region}
+                interval=1
+              mode: '000400'
+              owner: root
+              group: root
+            /etc/cfn/hooks.d/cfn-auto-reloader.conf:
+              content: !Sub |
+                [cfn-auto-reloader-hook]
+                triggers=post.update
+                path=Resources.EC2Instance.Metadata.AWS::CloudFormation::Init
+                action=/opt/aws/bin/cfn-init -v --stack ${AWS::StackName} --resource EC2Instance --region ${AWS::Region}
+                runas=root
+              mode: '000400'
+              owner: root
+              group: root                
+
+          services:
+            sysvinit:
+              httpd:
+                enabled: 'true'
+                ensureRunning: 'true'
+              cfn-hup:
+                enabled: 'true'
+                ensureRunning: 'true'
+                files:
+                  - /etc/cfn/cfn-hup.conf
+                  - /etc/cfn/hooks.d/cfn-auto-reloader.conf
+    Properties:
+      ImageId: !FindInMap [RegionMap, !Ref 'AWS::Region', 'AMI']
+      InstanceType: !Ref 'InstanceType'
+      KeyName: !Ref 'KeyName'
+      Tags:
+        - Key: Name
+          Value: !Ref 'EC2Name'
+      SecurityGroups:
+        - !Ref SecurityGroup
+      UserData:
+        'Fn::Base64': !Sub |
+          #!/bin/bash -ex
+            yum update -y aws-cfn-bootstrap
+          /opt/aws/bin/cfn-init -v --stack ${AWS::StackName} --resource EC2Instance --region ${AWS::Region}
+          # Signal the status from cfn-init (via $?)
+          /opt/aws/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource EC2Instance --region ${AWS::Region}
+          echo $(uname) . $(hostname -f) 
+
+Outputs:
+  PublicIp:
+    Description: Public IP of EC2 Instacne
+    Value: !Sub 'http://${EC2Instance.PublicIp}'
+  PublicDns:
+    Description: Public Dns Name of EC2 Instacne
+    Value: 
+      Fn::GetAtt:
+        - EC2Instance
+        - PublicDnsName

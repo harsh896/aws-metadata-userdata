@@ -1,0 +1,16 @@
+[
+    {
+      "ParameterKey": "InstanceType",
+      "ParameterValue": "t2.micro"
+    }, 
+    {
+      "ParameterKey": "EC2Name",
+      "ParameterValue": "AWS Linux Machine"
+    }, 
+    
+    {
+      "ParameterKey": "KeyName",
+      "ParameterValue": "metadata"
+    }
+]  
+  
